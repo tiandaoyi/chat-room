@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>websocket在线聊天室</title>
+  </head>
+  <body>
+    <h3 style="height:35px;">websocket在线聊天室</h3>
+    <div style="height:25px;">
+      nick: <input id="user" placeholder="请输入昵称" />
+      <button onclick="nickUpdateClick()">修改昵称</button>
+    </div>
+    <div style="height: calc(100vh - 200px);overflow: auto;">
+      <ul id="ul"></ul>
+    </div>
+    <div style="position: fixed; bottom:0;display: flex; margin-top: 10px">
+      <textarea
+        id="sendText"
+        style="margin-right: 6px"
+        placeholder="请输入消息"
+      ></textarea>
+      <button onclick="sendMessageClick()">发送消息</button>
+    </div>
+    <script>
+      const ws = new WebSocket("ws://localhost:3000/"); // 监听地址端口号
+      // 建立连接后
+      ws.onopen = function () {
+        console.log("服务器连接");
+      };
+
+      // 服务器发送数据后
+      ws.onmessage = ({ data }) => {
+        const resData = JSON.parse(data);
+        console.log("服务端发过来数据", resData);
+        appendLog(resData.type, resData.nickname, resData.message);
+      };
+
+      // 服务器关闭后
+      ws.onclose = () => {
+        console.log("服务器关闭");
+        appendLog("close");
+      };
+
+      // 昵称修改
+      function nickUpdateClick() {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify("/nick " + document.getElementById("user").value)
+          );
+        }
+      }
+
+      // 发送消息
+      function sendMessageClick() {
+        const msg = document.getElementById("sendText");
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(msg.value));
+        }
+        msg.value = "";
+        msg.focus();
+      }
+
+      //显示消息
+      function appendLog(type, nickname = "", message) {
+        const lessTime = new Date();
+        const date = `${lessTime.getFullYear()}-${
+          lessTime.getMonth() + 1
+        }-${lessTime.getDate()} ${lessTime.getHours()}:${lessTime.getMinutes()}:${lessTime.getSeconds()}`;
+
+        const messages = document.getElementById("ul");
+        const messageElem = document.createElement("li");
+        let messageText;
+        if (type === "notification") {
+          // 来了或者退出了
+          messageText = `<p style="color: green">&nbsp;&nbsp;${nickname}&nbsp;&nbsp;${message}</p>`;
+        } else if (type === "nickUpdate") {
+          // 修改名称
+          messageText = `<p style="color: orange">&nbsp;&nbsp;${message}</p>`;
+        } else if (type === "message") {
+          // 消息发送
+          messageText = `<p style="color: blue">&nbsp;&nbsp;${nickname}说：&nbsp;&nbsp;${message}</p>`;
+        } else if (type === "close") {
+          // 服务器关闭
+          messageText = `<p style="color: red">&nbsp;&nbsp;服务器关闭</p>`;
+        }
+
+        messageElem.innerHTML = `${date}<br/>${messageText}`;
+        messages.appendChild(messageElem);
+      }
+    </script>
+  </body>
+</html>
